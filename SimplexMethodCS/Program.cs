@@ -256,56 +256,83 @@ namespace SimplexMethodCS
             // Goal = EGoal.Min;
             Goal = EGoal.Max;
 
-            //Console.Write("Enter row amount: ");
-            //int rows = int.Parse(Console.ReadLine());
+            Console.Write("Enter goal; 1 – Min, 2 – Max: ");
+            int goalTemp = 0;
 
-            //Console.Write("Enter col amount: ");
-            //int cols = int.Parse(Console.ReadLine());
-
-            //float[,] matr = new float[rows, cols];
-
-            //GetMatrInput(ref matr, rows, cols);
-
-            //int rows = 4;
-            //int cols = 6;
-
-            int rows = 3;
-            int cols = 4;
-
-            var MainVariables = new List<int>();
-            for (int i = 0; i < rows -1; ++i)
+            while (goalTemp != 1 || goalTemp != 2)
             {
-                MainVariables.Add(i + (rows - 1));
+                goalTemp = int.Parse(Console.ReadLine());
+
+                switch (goalTemp)
+                {
+                case 1:
+                    Goal = EGoal.Min;
+                    Console.WriteLine("Desired goal: {0}", Goal);
+                    goto GoalIsSet;
+                case 2:
+                    Goal = EGoal.Max;
+                    Console.WriteLine("Desired goal: {0}", Goal);
+                    goto GoalIsSet;
+                default:
+                    Console.Write("Something went wrong, try again.\n");
+                    Console.Write("Enter goal; 1 – Min, 2 – Max: ");
+                    break;
+                }
             }
 
-            //var matr = new float[,]
-            //{
-            //    { -2,  3,  1,  0,  0,  6  },
-            //    {  1,  3,  0,  1,  0,  15 },
-            //    {  3, -1,  0,  0,  1,  15 },
-            //    { -1,  3,  0,  0,  0,  0  }
-            //};
-
-            //var matr = new float[,]
-            //{
-            //    {  1,  1,  1,  0,  0,  3  },
-            //    { -2,  3,  0,  1,  0,  8  },
-            //    {  1, -1,  0,  0,  1,  2  },
-            //    { -4,  1,  0,  0,  0,  0  }
-            //};
-
-            var matr = new float[,]
+            GoalIsSet:
             {
-                {  1, -2,  1, -4  },
-                {  1,  3, -1,  1  },
-                {  3,  8, -2,  0  }
-            };
+                Console.Write("Enter row amount: ");
+                int rows = int.Parse(Console.ReadLine());
 
-            Console.WriteLine("Initial matrix:");
-            PrintMatr(matr, rows, cols);
-            Console.WriteLine();
+                Console.Write("Enter col amount: ");
+                int cols = int.Parse(Console.ReadLine());
 
-            SimplexMethodSolver(ref matr, rows, cols, ref MainVariables);
+                float[,] matr = new float[rows, cols];
+
+                GetMatrInput(ref matr, rows, cols);
+
+                //int rows = 4;
+                //int cols = 6;
+
+                //int rows = 3;
+                //int cols = 4;
+
+                var MainVariables = new List<int>();
+                for (int i = 0; i < rows - 1; ++i)
+                {
+                    MainVariables.Add(i + (rows - 1));
+                }
+
+                //var matr = new float[,]
+                //{
+                //    { -2,  3,  1,  0,  0,  6  },
+                //    {  1,  3,  0,  1,  0,  15 },
+                //    {  3, -1,  0,  0,  1,  15 },
+                //    { -1,  3,  0,  0,  0,  0  }
+                //};
+
+                //var matr = new float[,]
+                //{
+                //    {  1,  1,  1,  0,  0,  3  },
+                //    { -2,  3,  0,  1,  0,  8  },
+                //    {  1, -1,  0,  0,  1,  2  },
+                //    { -4,  1,  0,  0,  0,  0  }
+                //};
+
+                //var matr = new float[,]
+                //{
+                //    {  1, -2,  1, -4  },
+                //    {  1,  3, -1,  1  },
+                //    {  3,  8, -2,  0  }
+                //};
+
+                Console.WriteLine("Initial matrix:");
+                PrintMatr(matr, rows, cols);
+                Console.WriteLine();
+
+                SimplexMethodSolver(ref matr, rows, cols, ref MainVariables);
+            }
         }
     }
 }
