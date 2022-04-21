@@ -69,7 +69,7 @@ namespace SimplexMethodCS
             {
             // Если надо минимизировать, то ищем положительные элементы
             case EGoal.Min:
-                for (int j = 0; j < cols; ++j)
+                for (int j = 0; j < cols - 1; ++j)
                 {
                     if (matr[rows - 1, j] > 0)
                     {
@@ -80,7 +80,7 @@ namespace SimplexMethodCS
                 break;
             // Если надо максимизировать, то ищем отрицательные элементы
             case EGoal.Max:
-                for (int j = 0; j < cols; ++j)
+                for (int j = 0; j < cols - 1; ++j)
                 {
                     if (matr[rows - 1, j] < 0)
                     {
@@ -94,8 +94,29 @@ namespace SimplexMethodCS
                 return -1;
             }
 
-            // 3. Если опорный план оптимальный, вернуть код успеха
-            if (bIsOptimal)
+            // Проверить базис
+            // Если базис не является допустимым, то необходимо преобразовать симплекс-таблицу
+            bool bIsBasisPseudo = false;
+            for (int i = 0; i < rows; ++i)
+            {
+                if (matr[i, cols - 1] < 0)
+                {
+                    bIsBasisPseudo = true;
+                }
+            }
+
+            int keyIndexRow = 0;
+            int keyIndexCol = 0;
+
+            // !Pseudo
+            float minEstimatedRelation = 0;
+
+            // Pseudo
+            float maxAbsBiElem = 0;
+            int maxAbsBiElemRow = 0;
+
+            // 3. Если опорный план оптимален, вывести решение
+            if (bIsOptimal && !bIsBasisPseudo)
             {
                 Console.WriteLine("\nSolution found:");
                 for (int i = 0; i < rows; ++i)
@@ -117,51 +138,59 @@ namespace SimplexMethodCS
             // 3. Если опорный план не оптимальный, ботать дальше
             else
             {
-                // 4. Выбрать ключевой столбец (наим. (наиб.) коэф индексной строки)
-                float keyIndexElem = matr[rows - 1, 0];
-                int keyIndexElemCol = 0;
-
-                switch (Goal)
+                if (!bIsBasisPseudo)
                 {
-                case EGoal.Min:
-                    for (int j = 0; j < cols; ++j)
-                    {
-                        if (matr[rows - 1, j] > keyIndexElem)
-                        {
-                            keyIndexElem = matr[rows - 1, j];
-                            keyIndexElemCol = j;
-                        }
-                    }
-                    break;
-                case EGoal.Max:
-                    for (int j = 0; j < cols; ++j)
-                    {
-                        if (matr[rows - 1, j] < keyIndexElem)
-                        {
-                            keyIndexElem = matr[rows - 1, j];
-                            keyIndexElemCol = j;
-                        }
-                    }
-                    break;
-                default:
-                    Console.WriteLine("Something went wrong!");
-                    return -1;
-                }
+                    // 4. Выбрать ключевой столбец (наим. (наиб.) коэф индексной строки)
+                    float keyIndexElem = matr[rows - 1, 0];
 
-                // 5. Оценочные отношения (bi на элемент ключевого столбца), должны быть одинаковые знаки
-                var estimatedRelations = new List<float>();
-                var estimatedRelationsValidIndexes = new List<int>();
-                for (int i = 0; i < rows - 1; ++i)
-                {
-                    if (matr[i, keyIndexElemCol] != 0.0f)
+                    switch (Goal)
                     {
-                        if
-                        (
-                            (matr[i, keyIndexElemCol] >= 0 && matr[i, cols - 1] >= 0) ||
-                            (matr[i, keyIndexElemCol] <= 0 && matr[i, cols - 1] <= 0)
-                        )
+                    case EGoal.Min:
+                        for (int j = 0; j < cols; ++j)
                         {
-                            estimatedRelations.Add(matr[i, cols - 1] / matr[i, keyIndexElemCol]);
+                            if (matr[rows - 1, j] > keyIndexElem)
+                            {
+                                keyIndexElem = matr[rows - 1, j];
+                                keyIndexCol = j;
+                            }
+                        }
+                        break;
+                    case EGoal.Max:
+                        for (int j = 0; j < cols; ++j)
+                        {
+                            if (matr[rows - 1, j] < keyIndexElem)
+                            {
+                                keyIndexElem = matr[rows - 1, j];
+                                keyIndexCol = j;
+                            }
+                        }
+                        break;
+                    default:
+                        Console.WriteLine("Something went wrong!");
+                        return -1;
+                    }
+
+                    // 5. Оценочные отношения (bi на элемент ключевого столбца), должны быть одинаковые знаки
+                    //    Если находим отрицательные значения, то вводим вспомогательный столбец
+                    var estimatedRelations = new List<float>();
+                    var estimatedRelationsValidIndexes = new List<int>();
+                    for (int i = 0; i < rows - 1; ++i)
+                    {
+                        if (matr[i, keyIndexCol] != 0.0f)
+                        {
+                            if
+                            (
+                                (matr[i, keyIndexCol] >= 0 && matr[i, cols - 1] >= 0) ||
+                                (matr[i, keyIndexCol] <= 0 && matr[i, cols - 1] <= 0)
+                            )
+                            {
+                                estimatedRelations.Add(matr[i, cols - 1] / matr[i, keyIndexCol]);
+                            }
+                            else
+                            {
+                                estimatedRelations.Add(0);
+                                estimatedRelationsValidIndexes.Add(i);
+                            }
                         }
                         else
                         {
@@ -169,31 +198,60 @@ namespace SimplexMethodCS
                             estimatedRelationsValidIndexes.Add(i);
                         }
                     }
-                    else
+
+                    // 6. Выбрать ключевую строку (наим. оценочное отношение)
+                    estimatedRelations.Sort((a, b) => a.CompareTo(b));
+                    minEstimatedRelation = estimatedRelations[0];
+                    for (int i = 0; i < rows - 1; ++i)
                     {
-                        estimatedRelations.Add(0);
-                        estimatedRelationsValidIndexes.Add(i);
+                        if (estimatedRelations[i] < minEstimatedRelation && !estimatedRelationsValidIndexes.Contains(i))
+                        {
+                            minEstimatedRelation = estimatedRelations[i];
+                            keyIndexRow = i;
+                        }
                     }
                 }
-
-                // 6. Выбрать ключевую строку (наим. оценочное отношение)
-                estimatedRelations.Sort((a, b) => b.CompareTo(a));
-                float minEstimatedRelation = estimatedRelations[0];
-                int minEstimatedRelationRow = 0;
-                for (int i = 0; i < rows - 1; ++i)
+                else
                 {
-                    if (estimatedRelations[i] < minEstimatedRelation && !estimatedRelationsValidIndexes.Contains(i))
+                    // 5. Выбрать ключевую строку (наиб. по модулю элемент в столбце bi)
+                    maxAbsBiElem = matr[0, cols - 1];
+                    for (int i = 0; i < rows - 1; ++i)
                     {
-                        minEstimatedRelation = estimatedRelations[i];
-                        minEstimatedRelationRow = i;
+                        if (Math.Abs(matr[i, cols - 1]) > maxAbsBiElem)
+                        {
+                            maxAbsBiElem = Math.Abs(matr[i, cols - 1]);
+                            maxAbsBiElemRow = i;
+                        }
                     }
+                    keyIndexRow = maxAbsBiElemRow;
+
+                    // 5. Оценочные отношения (индексную строку поделить на элементы ключевой строки)
+                    var thetaPseudo = new List<float>();
+                    for (int j = 0; j < mainVariables.Count; ++j)
+                    {
+                        thetaPseudo.Add(matr[rows - 1, j] / matr[keyIndexRow, j]);
+                    }
+
+                    // 5. Выбрать ключевой столбец (наим. знач. theta)
+                    thetaPseudo.Sort((a, b) => b.CompareTo(a));
+                    float minThetaPseudoElem = thetaPseudo[0];
+                    int minThetaPseudoElemCol = 0;
+                    for (int j = 0; j < mainVariables.Count; ++j)
+                    {
+                        if (thetaPseudo[j] < minThetaPseudoElem)
+                        {
+                            minThetaPseudoElem = thetaPseudo[j];
+                            minThetaPseudoElemCol = j;
+                        }
+                    }
+                    keyIndexCol = minThetaPseudoElemCol;
                 }
 
                 // 7. Разрешающий элемент - пересечение ключевого столбца и ключевой строки
-                float resolvingItem = matr[minEstimatedRelationRow, keyIndexElemCol];
+                float resolvingItem = matr[keyIndexRow, keyIndexCol];
 
                 // 8. Определить новую основную переменную (в массив со столбцом основных переменных вписать переменную из ключевого столбца)
-                mainVariables[minEstimatedRelationRow] = keyIndexElemCol;
+                mainVariables[keyIndexRow] = keyIndexCol;
 
                 // 9. Вторая симп.-табл. (рекурсия), чекнуть опорный план (это индексная строка)
 
@@ -211,26 +269,27 @@ namespace SimplexMethodCS
                 {
                     if (resolvingItem == 0.0f)
                     {
-                        matr[minEstimatedRelationRow, j] = 0.0f;
+                        matr[keyIndexRow, j] = 0.0f;
                     }
                     else
                     {
-                        matr[minEstimatedRelationRow, j] /= resolvingItem;
+                        matr[keyIndexRow, j] /= resolvingItem;
                     }
                 }
 
                 // Вычитаем полученную строку, умноженную на соответствующий элемент ключевого столбца, из всех остальных строк
                 for (int i = 0; i < rows; ++i)
                 {
-                    float temp = matr[i, keyIndexElemCol];
+                    float temp = matr[i, keyIndexCol];
+
                     for (int j = 0; j < cols; ++j)
                     {
-                        if (i == minEstimatedRelationRow)
+                        if (i == keyIndexRow)
                         {
                             continue;
                         }
 
-                        matr[i, j] -= matr[minEstimatedRelationRow, j] * temp;
+                        matr[i, j] -= matr[keyIndexRow, j] * temp;
                     }
                 }
 
@@ -253,8 +312,8 @@ namespace SimplexMethodCS
 
         static void Main(string[] args)
         {
-            // Goal = EGoal.Min;
-            Goal = EGoal.Max;
+            //Goal = EGoal.Min;
+            //Goal = EGoal.Max;
 
             Console.Write("Enter goal; 1 – Min, 2 – Max: ");
             int goalTemp = 0;
@@ -292,6 +351,9 @@ namespace SimplexMethodCS
 
                 GetMatrInput(ref matr, rows, cols);
 
+                //int rows = 3;
+                //int cols = 5;
+
                 //int rows = 4;
                 //int cols = 6;
 
@@ -303,6 +365,13 @@ namespace SimplexMethodCS
                 {
                     MainVariables.Add(i + (rows - 1));
                 }
+
+                //var matr = new float[,]
+                //{
+                //    {  2,  3,  1,  0,  120 },
+                //    { -3, -9,  0,  1, -270 },
+                //    { -2, -4,  0,  0,    0 }
+                //};
 
                 //var matr = new float[,]
                 //{
